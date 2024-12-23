@@ -21,6 +21,18 @@
             "src": "/scrape/batch",
             "methods": ["GET"],
             "dest": "api/batch_scrape.py"
+        },
+        {
+            "src": "/cron/batch-scrape",
+            "methods": ["GET"],
+            "dest": "api/cron.py"
+        }
+    ],
+    "crons": [
+        {
+            "path": "/cron/batch-scrape",
+            "schedule": "* * * * *"
         }
     ]
+    */
 }
