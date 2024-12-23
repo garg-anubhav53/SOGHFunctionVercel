@@ -46,49 +46,65 @@ def process_batch():
                     processed_urls.append(so_url)
                     continue
                 
-                # Get GitHub profile and Stack Overflow details
-                github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
-                
-                # Skip Stack Overflow's official Twitter
-                if twitter_url and twitter_url.lower().strip('/') == 'https://twitter.com/stackoverflow':
-                    twitter_url = None
-                
-                # Save profile with Twitter URL, even without GitHub
-                if twitter_url:
-                    save_profile(so_url, None, None, None, so_description, twitter_url)
-                
-                # If no GitHub URL, mark as processed and continue
-                if not github_url:
-                    results.append({
-                        "stackoverflow_url": so_url,
-                        "status": "no_github_profile",
-                        "stackoverflow_description": so_description,
-                        "twitter_url": twitter_url
-                    })
-                    processed_urls.append(so_url)
-                    continue
-                
-                # Get GitHub info and save complete profile
                 try:
-                    email, profile = scraper.get_github_info(github_url)
-                    save_profile(so_url, github_url, email, profile, so_description, twitter_url)
+                    # Get GitHub profile and Stack Overflow details
+                    github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
                     
-                    results.append({
-                        "stackoverflow_url": so_url,
-                        "github_url": github_url,
-                        "email": email,
-                        "status": "success",
-                        "stackoverflow_description": so_description,
-                        "twitter_url": twitter_url
-                    })
-                    processed_urls.append(so_url)
-                except Exception as e:
+                    # Skip Stack Overflow's official Twitter
+                    if twitter_url and twitter_url.lower().strip('/') == 'https://twitter.com/stackoverflow':
+                        twitter_url = None
+                    
+                    # Save profile with Twitter URL, even without GitHub
+                    if twitter_url:
+                        save_profile(so_url, None, None, None, so_description, twitter_url)
+                    
+                    # If no GitHub URL, mark as processed and continue
+                    if not github_url:
+                        results.append({
+                            "stackoverflow_url": so_url,
+                            "status": "no_github_profile",
+                            "stackoverflow_description": so_description,
+                            "twitter_url": twitter_url
+                        })
+                        processed_urls.append(so_url)
+                        continue
+                    
+                    # Get GitHub info and save complete profile
+                    try:
+                        email, profile = scraper.get_github_info(github_url)
+                        save_profile(so_url, github_url, email, profile, so_description, twitter_url)
+                        
+                        results.append({
+                            "stackoverflow_url": so_url,
+                            "github_url": github_url,
+                            "email": email,
+                            "status": "success",
+                            "stackoverflow_description": so_description,
+                            "twitter_url": twitter_url
+                        })
+                        processed_urls.append(so_url)
+                    except ValueError as e:
+                        if "rate limit exceeded" in str(e).lower():
+                            # Stop processing this batch if rate limited
+                            print("GitHub rate limit exceeded, stopping batch")
+                            break
+                        results.append({
+                            "stackoverflow_url": so_url,
+                            "status": "error",
+                            "error": str(e)
+                        })
+                        processed_urls.append(so_url)
+                except ValueError as e:
+                    if "rate limit exceeded" in str(e).lower():
+                        # Stop processing this batch if rate limited
+                        print("GitHub rate limit exceeded, stopping batch")
+                        break
                     results.append({
                         "stackoverflow_url": so_url,
                         "status": "error",
-                        "error": f"Error saving profile: {str(e)}"
+                        "error": str(e)
                     })
-                    processed_urls.append(so_url)  # Still mark as processed to avoid getting stuck
+                    processed_urls.append(so_url)
                     
             except Exception as e:
                 results.append({
@@ -96,7 +112,7 @@ def process_batch():
                     "status": "error",
                     "error": str(e)
                 })
-                processed_urls.append(so_url)  # Mark as processed to avoid getting stuck
+                processed_urls.append(so_url)
         
         # Update counter with processed URLs
         if processed_urls:

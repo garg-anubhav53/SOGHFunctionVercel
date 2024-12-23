@@ -48,10 +48,6 @@ CREATE TABLE github_profiles (
     UNIQUE(stackoverflow_url)
 );
 
--- Modify github_url to be nullable in existing table
-ALTER TABLE github_profiles 
-ALTER COLUMN github_url DROP NOT NULL;
-
 -- Create indexes for faster lookups
 CREATE INDEX IF NOT EXISTS idx_processed_urls_url ON processed_urls (stackoverflow_url);
 CREATE INDEX IF NOT EXISTS idx_stackoverflow_profiles_url ON stackoverflow_profiles (url);
