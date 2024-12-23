@@ -8,19 +8,19 @@ BATCH_SIZE = 40
 def process_batch():
     """Process a batch of Stack Overflow profiles"""
     try:
-        # Get current position
+        # Get current position and URLs
         counter = get_counter()
         urls = get_urls()
         
-        if counter >= len(urls):
+        if not urls:  # Only stop if there are no more unprocessed URLs
             return {
                 "message": "All profiles processed",
                 "total_processed": counter
             }
         
         # Process batch
-        end_idx = min(counter + BATCH_SIZE, len(urls))
-        batch_urls = urls[counter:end_idx]
+        end_idx = min(counter + BATCH_SIZE, counter + len(urls))  # Only look at available URLs
+        batch_urls = urls[:BATCH_SIZE]  # Take next batch
         processed_urls = []
         results = []
         scraper = GithubScraper()
@@ -89,12 +89,12 @@ def process_batch():
         
         # Update counter if we processed any URLs
         if processed_urls:
-            update_counter(end_idx, processed_urls)
-            print(f"Updated counter to {end_idx} and processed {len(processed_urls)} URLs")
+            update_counter(counter + len(processed_urls), processed_urls)
+            print(f"Updated counter to {counter + len(processed_urls)} and processed {len(processed_urls)} URLs")
         
         return {
             "message": f"Processed {len(processed_urls)} profiles",
-            "current_index": end_idx,
+            "current_index": counter + len(processed_urls),
             "results": results
         }
         
