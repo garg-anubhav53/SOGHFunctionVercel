@@ -1,7 +1,7 @@
+from http.server import BaseHTTPRequestHandler
 import os
 from supabase import create_client, Client
-from github_scraper import GithubScraper
-from http.client import responses
+from .github import GithubScraper
 import json
 from typing import Optional
 
@@ -79,88 +79,89 @@ def save_profile(so_url: str, github_url: str, email: str, profile_data: dict):
         "following": profile_data.get("following"),
         "bio": profile_data.get("bio"),
         "contributions": profile_data.get("contributions"),
-        "raw_data": json.dumps(profile_data)  # Store full data as JSON
+        "raw_data": json.dumps(profile_data)
     }
     supabase.table("github_profiles").insert(profile_data).execute()
 
-def handler(event, context):
-    """Vercel serverless function handler"""
-    try:
-        # Get current position
-        counter = get_counter()
-        urls = get_urls()
-        
-        if counter >= len(urls):
-            return {
-                "statusCode": 200,
-                "body": json.dumps({
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        try:
+            # Get current position
+            counter = get_counter()
+            urls = get_urls()
+            
+            if counter >= len(urls):
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
                     "message": "All profiles processed",
                     "total_processed": counter
-                })
-            }
-        
-        # Process batch
-        end_idx = min(counter + BATCH_SIZE, len(urls))
-        batch_urls = urls[counter:end_idx]
-        processed_urls = []  # Track successfully processed URLs
-        scraper = GithubScraper()
-        results = []
-        
-        for so_url in batch_urls:
-            try:
-                # Ensure URL starts with https://
-                if not so_url.startswith('http'):
-                    so_url = f"https://{so_url}"
-                
-                # Get GitHub profile
-                github_url = scraper.get_github_link(so_url)
-                if not github_url:
+                }).encode())
+                return
+            
+            # Process batch
+            end_idx = min(counter + BATCH_SIZE, len(urls))
+            batch_urls = urls[counter:end_idx]
+            processed_urls = []
+            scraper = GithubScraper()
+            results = []
+            
+            for so_url in batch_urls:
+                try:
+                    # Ensure URL starts with https://
+                    if not so_url.startswith('http'):
+                        so_url = f"https://{so_url}"
+                    
+                    # Get GitHub profile
+                    github_url = scraper.get_github_link(so_url)
+                    if not github_url:
+                        results.append({
+                            "stackoverflow_url": so_url,
+                            "status": "no_github_profile"
+                        })
+                        processed_urls.append(so_url)
+                        continue
+                    
+                    # Get GitHub info
+                    email, profile = scraper.get_github_info(github_url)
+                    
+                    # Save to Supabase
+                    save_profile(so_url, github_url, email, profile)
+                    
                     results.append({
                         "stackoverflow_url": so_url,
-                        "status": "no_github_profile"
+                        "github_url": github_url,
+                        "status": "success"
                     })
-                    processed_urls.append(so_url)  # Count as processed even if no GitHub profile
-                    continue
-                
-                # Get GitHub info
-                email, profile = scraper.get_github_info(github_url)
-                
-                # Save to Supabase
-                save_profile(so_url, github_url, email, profile)
-                
-                results.append({
-                    "stackoverflow_url": so_url,
-                    "github_url": github_url,
-                    "status": "success"
-                })
-                processed_urls.append(so_url)
-                
-            except Exception as e:
-                results.append({
-                    "stackoverflow_url": so_url,
-                    "status": "error",
-                    "error": str(e)
-                })
-        
-        # Only update counter if we processed some URLs
-        if processed_urls:
-            update_counter(end_idx, processed_urls)
-        
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
+                    processed_urls.append(so_url)
+                    
+                except Exception as e:
+                    results.append({
+                        "stackoverflow_url": so_url,
+                        "status": "error",
+                        "error": str(e)
+                    })
+            
+            # Only update counter if we processed some URLs
+            if processed_urls:
+                update_counter(end_idx, processed_urls)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
                 "start_index": counter,
                 "end_index": end_idx,
                 "processed": len(processed_urls),
                 "results": results
-            })
-        }
-        
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({
+            }).encode())
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
                 "error": str(e),
                 "current_index": counter
-            })
-        }
+            }).encode())
