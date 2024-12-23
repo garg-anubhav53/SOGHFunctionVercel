@@ -46,6 +46,14 @@ def process_batch():
                 # Get GitHub profile and Stack Overflow details
                 github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
                 
+                # Check if Twitter URL is Stack Overflow's profile
+                if twitter_url and twitter_url.lower().strip('/') == 'https://twitter.com/stackoverflow':
+                    twitter_url = None
+                
+                # Save profile if we found a Twitter URL, even without GitHub
+                if twitter_url:
+                    save_profile(so_url, None, None, None, so_description, twitter_url)
+                
                 if not github_url:
                     results.append({
                         "stackoverflow_url": so_url,

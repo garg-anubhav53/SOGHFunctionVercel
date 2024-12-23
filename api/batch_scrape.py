@@ -110,10 +110,11 @@ def batch_check_processed_urls(urls: list) -> set:
         print(f"Error batch checking URLs: {e}")
         return set()
 
-def save_profile(so_url: str, github_url: str, email: str, profile_data: dict, so_description: str = None, twitter_url: str = None):
+def save_profile(so_url: str, github_url: str = None, email: str = None, profile_data: dict = None, so_description: str = None, twitter_url: str = None):
     """Save profile data to Supabase"""
     init_supabase()
     try:
+        profile_data = profile_data or {}
         profile_data = {
             "stackoverflow_url": so_url,
             "github_url": github_url,
@@ -129,7 +130,7 @@ def save_profile(so_url: str, github_url: str, email: str, profile_data: dict, s
             "following": profile_data.get("following"),
             "bio": profile_data.get("bio"),
             "contributions": profile_data.get("contributions"),
-            "raw_data": json.dumps(profile_data)
+            "raw_data": json.dumps(profile_data) if profile_data else None
         }
         # Use upsert instead of insert to handle duplicates
         supabase.table("github_profiles").upsert(
@@ -185,6 +186,14 @@ class Handler(BaseHTTPRequestHandler):
                         
                         # Get GitHub profile and Stack Overflow details
                         github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
+                        
+                        # Check if Twitter URL is Stack Overflow's profile
+                        if twitter_url and twitter_url.lower().strip('/') == 'https://twitter.com/stackoverflow':
+                            twitter_url = None
+                        
+                        # Save profile if we found a Twitter URL, even without GitHub
+                        if twitter_url:
+                            save_profile(so_url, None, None, None, so_description, twitter_url)
                         
                         if not github_url:
                             results.append({
