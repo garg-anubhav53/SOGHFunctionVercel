@@ -1,6 +1,10 @@
 from http.server import BaseHTTPRequestHandler
 import requests
-from .batch_scrape import get_counter, get_urls, batch_check_processed_urls, GithubScraper, update_counter, save_profile
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from github_scraper import GithubScraper
+from .batch_scrape import get_counter, get_urls, batch_check_processed_urls, update_counter, save_profile
 import json
 
 BATCH_SIZE = 40
