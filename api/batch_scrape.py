@@ -5,7 +5,7 @@ from .github import GithubScraper
 import json
 from typing import Optional
 
-BATCH_SIZE = 20
+BATCH_SIZE = 40
 
 # Initialize Supabase client
 supabase: Optional[Client] = None

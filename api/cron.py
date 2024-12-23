@@ -3,7 +3,7 @@ import requests
 from .batch_scrape import get_counter, get_urls, batch_check_processed_urls, GithubScraper, update_counter, save_profile
 import json
 
-BATCH_SIZE = 20
+BATCH_SIZE = 40
 
 def process_batch():
     """Process a batch of Stack Overflow profiles"""
