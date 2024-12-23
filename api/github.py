@@ -29,6 +29,18 @@ def validate_github_url(url):
     except Exception as e:
         return False, f"Invalid URL format: {str(e)}"
 
+def validate_stackoverflow_url(url):
+    """Validate Stack Overflow URL format"""
+    try:
+        parsed = urlparse(url)
+        if not parsed.netloc or 'stackoverflow.com' not in parsed.netloc:
+            return False, "Invalid Stack Overflow URL"
+        if not parsed.path.startswith('/users/'):
+            return False, "URL must be a Stack Overflow user profile"
+        return True, None
+    except Exception as e:
+        return False, f"Invalid URL format: {str(e)}"
+
 def init_scraper():
     """Initialize the scraper with proper error handling"""
     try:
@@ -66,35 +78,79 @@ class handler(BaseHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
             
-            if 'github_url' not in data:
-                raise ValueError("Missing 'github_url' in request body")
+            if 'github_url' in data:
+                # Validate GitHub URL
+                is_valid, error_message = validate_github_url(data['github_url'])
+                if not is_valid:
+                    raise ValueError(error_message)
 
-            # Validate URL
-            is_valid, error_message = validate_github_url(data['github_url'])
-            if not is_valid:
-                raise ValueError(error_message)
-
-            logger.info(f"Request {request_id}: Processing URL: {data['github_url']}")
-            
-            scraper = init_scraper()
-            email, profile = scraper.get_github_info(data['github_url'])
-            
-            if not email and not profile:
-                logger.warning(f"Request {request_id}: No information found")
-                self.send_json_response(404, {
-                    "success": False,
-                    "error": "No information found for this GitHub profile",
+                logger.info(f"Request {request_id}: Processing GitHub URL: {data['github_url']}")
+                
+                scraper = init_scraper()
+                email, profile = scraper.get_github_info(data['github_url'])
+                
+                if not email and not profile:
+                    logger.warning(f"Request {request_id}: No information found")
+                    self.send_json_response(404, {
+                        "success": False,
+                        "error": "No information found for this GitHub profile",
+                        "request_id": request_id
+                    })
+                    return
+                
+                logger.info(f"Request {request_id}: Successfully retrieved profile information")
+                self.send_json_response(200, {
+                    "success": True,
+                    "email": email,
+                    "profile": profile,
                     "request_id": request_id
                 })
-                return
-            
-            logger.info(f"Request {request_id}: Successfully retrieved profile information")
-            self.send_json_response(200, {
-                "success": True,
-                "email": email,
-                "profile": profile,
-                "request_id": request_id
-            })
+            elif 'stackoverflow_url' in data:
+                # Validate Stack Overflow URL
+                is_valid, error_message = validate_stackoverflow_url(data['stackoverflow_url'])
+                if not is_valid:
+                    raise ValueError(error_message)
+
+                logger.info(f"Request {request_id}: Processing Stack Overflow URL: {data['stackoverflow_url']}")
+                
+                scraper = init_scraper()
+                
+                # First get the GitHub URL from Stack Overflow
+                github_url = scraper.get_github_link(data['stackoverflow_url'])
+                if not github_url:
+                    logger.warning(f"Request {request_id}: No GitHub profile found")
+                    self.send_json_response(404, {
+                        "success": False,
+                        "error": "No GitHub profile found for this Stack Overflow user",
+                        "request_id": request_id
+                    })
+                    return
+
+                logger.info(f"Request {request_id}: Found GitHub URL: {github_url}")
+                
+                # Then get the GitHub profile information
+                email, profile = scraper.get_github_info(github_url)
+                
+                if not email and not profile:
+                    logger.warning(f"Request {request_id}: No information found on GitHub profile")
+                    self.send_json_response(404, {
+                        "success": False,
+                        "error": "No information found on GitHub profile",
+                        "request_id": request_id
+                    })
+                    return
+                
+                logger.info(f"Request {request_id}: Successfully retrieved profile information")
+                self.send_json_response(200, {
+                    "success": True,
+                    "stackoverflow_url": data['stackoverflow_url'],
+                    "github_url": github_url,
+                    "email": email,
+                    "profile": profile,
+                    "request_id": request_id
+                })
+            else:
+                raise ValueError("Missing 'github_url' or 'stackoverflow_url' in request body")
             
         except json.JSONDecodeError as e:
             logger.error(f"Request {request_id}: Invalid JSON in request body: {e}")

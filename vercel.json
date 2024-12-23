@@ -16,6 +16,11 @@
             "src": "/scrape/github",
             "methods": ["POST"],
             "dest": "api/github.py"
+        },
+        {
+            "src": "/scrape/batch",
+            "methods": ["GET"],
+            "dest": "api/batch_scrape.py"
         }
     ]
 }
