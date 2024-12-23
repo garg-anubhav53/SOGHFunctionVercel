@@ -51,8 +51,16 @@ def process_batch():
             if not so_url.startswith('http'):
                 so_url = f"https://{so_url}"
             
-            # Get GitHub profile
-            github_url = scraper.get_github_link(so_url)
+            # Get GitHub profile and Stack Overflow details
+            github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
+            
+            if so_description:
+                print(f"Stack Overflow Description: {so_description[:200]}...")
+            if twitter_url:
+                print(f"Twitter: {twitter_url}")
+            if profile_text:
+                print(f"Profile Text: {profile_text[:200]}...")
+            
             if not github_url:
                 print("No GitHub profile found")
                 continue

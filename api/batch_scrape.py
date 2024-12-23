@@ -63,12 +63,14 @@ def get_urls() -> list:
     result = supabase.table("stackoverflow_profiles").select("url").execute()
     return [row.get("url") for row in result.data]
 
-def save_profile(so_url: str, github_url: str, email: str, profile_data: dict):
+def save_profile(so_url: str, github_url: str, email: str, profile_data: dict, so_description: str = None, twitter_url: str = None):
     """Save profile data to Supabase"""
     init_supabase()
     profile_data = {
         "stackoverflow_url": so_url,
         "github_url": github_url,
+        "stackoverflow_description": so_description,
+        "twitter_url": twitter_url,
         "email": email,
         "name": profile_data.get("name"),
         "username": profile_data.get("username"),
@@ -113,12 +115,14 @@ class Handler(BaseHTTPRequestHandler):
                     if not so_url.startswith('http'):
                         so_url = f"https://{so_url}"
                     
-                    # Get GitHub profile
-                    github_url = scraper.get_github_link(so_url)
+                    # Get GitHub profile and Stack Overflow details
+                    github_url, so_description, twitter_url = scraper.get_github_link(so_url)
                     if not github_url:
                         results.append({
                             "stackoverflow_url": so_url,
-                            "status": "no_github_profile"
+                            "status": "no_github_profile",
+                            "stackoverflow_description": so_description,
+                            "twitter_url": twitter_url
                         })
                         processed_urls.append(so_url)
                         continue
@@ -127,11 +131,13 @@ class Handler(BaseHTTPRequestHandler):
                     email, profile = scraper.get_github_info(github_url)
                     
                     # Save to Supabase
-                    save_profile(so_url, github_url, email, profile)
+                    save_profile(so_url, github_url, email, profile, so_description, twitter_url)
                     
                     results.append({
                         "stackoverflow_url": so_url,
                         "github_url": github_url,
+                        "stackoverflow_description": so_description,
+                        "twitter_url": twitter_url,
                         "status": "success"
                     })
                     processed_urls.append(so_url)

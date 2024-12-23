@@ -116,7 +116,7 @@ class handler(BaseHTTPRequestHandler):
                 scraper = init_scraper()
                 
                 # First get the GitHub URL from Stack Overflow
-                github_url = scraper.get_github_link(data['stackoverflow_url'])
+                github_url, description, twitter_url = scraper.get_github_link(data['stackoverflow_url'])
                 if not github_url:
                     logger.warning(f"Request {request_id}: No GitHub profile found")
                     self.send_json_response(404, {
@@ -147,6 +147,8 @@ class handler(BaseHTTPRequestHandler):
                     "github_url": github_url,
                     "email": email,
                     "profile": profile,
+                    "description": description,
+                    "twitter_url": twitter_url,
                     "request_id": request_id
                 })
             else:

@@ -8,6 +8,7 @@ import pandas as pd
 import logging
 from urllib.parse import urljoin
 from dotenv import load_dotenv
+from typing import Optional, Dict, Any, Tuple
 
 # Load environment variables
 load_dotenv()
@@ -68,49 +69,54 @@ class GithubScraper:
         except Exception as e:
             logger.error(f"Error loading cookies: {e}")
 
-    def get_github_link(self, so_url):
-        """Extract GitHub profile link from Stack Overflow page"""
+    def get_github_link(self, stackoverflow_url: str) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """Extract GitHub profile link, description, Twitter link, and profile text from Stack Overflow profile
+        
+        Returns:
+            tuple: (github_url, description, twitter_url, profile_text)
+        """
         try:
-            logger.info(f"Looking for GitHub link in: {so_url}")
-            response = self._make_request(so_url)
+            response = self._make_request(stackoverflow_url)
+            if not response:
+                return None, None, None, None
+
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Method 1: Look for GitHub icon with associated link (most reliable)
-            github_svg = soup.find('svg', {'class': lambda x: x and 'iconGitHub' in x.split()})
-            if github_svg:
-                parent_link = github_svg.find_parent('a')
-                if parent_link and 'github.com' in parent_link.get('href', ''):
-                    return self._clean_github_url(parent_link['href'])
-            
-            # Method 2: Look for links with rel="me" in list-reset
-            list_reset = soup.find('ul', {'class': lambda x: x and 'list-reset' in x.split()})
-            if list_reset:
-                me_links = list_reset.find_all('a', {'rel': lambda x: x and 'me' in x.split()})
-                for link in me_links:
-                    href = link.get('href', '')
-                    if 'github.com' in href.lower():
-                        return self._clean_github_url(href)
-            
-            # Method 3: Look for any link in flex--item that contains GitHub
-            flex_items = soup.find_all('li', {'class': 'flex--item'})
-            for item in flex_items:
-                link = item.find('a', href=lambda x: x and 'github.com' in x.lower())
-                if link:
-                    return self._clean_github_url(link['href'])
-            
-            # Method 4: Fallback - look for any GitHub profile link
-            all_links = soup.find_all('a', href=lambda x: x and 'github.com' in x.lower())
-            for link in all_links:
-                href = link.get('href', '')
-                if self._is_github_profile_url(href):
-                    return self._clean_github_url(href)
-            
-            logger.info("No GitHub link found")
-            return None
-            
+            # Get Stack Overflow description
+            description = None
+            about_me = soup.find('div', {'id': 'user-about-me'})
+            if about_me:
+                description = about_me.get_text(strip=True)
+
+            # Get Twitter link
+            twitter_url = None
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                if 'twitter.com' in href:
+                    twitter_url = href
+                    break
+
+            # Get GitHub link
+            github_url = None
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                if 'github.com' in href and not href.endswith('.png'):
+                    github_url = href
+                    if not github_url.startswith('http'):
+                        github_url = f"https://{github_url}"
+                    break
+
+            # Get profile text
+            profile_text = None
+            profile_section = soup.find('div', {'id': 'mainbar-full'})
+            if profile_section:
+                profile_text = profile_section.get_text(strip=True, separator=' ')
+
+            return github_url, description, twitter_url, profile_text
+
         except Exception as e:
-            logger.error(f"Error finding GitHub link: {e}")
-            return None
+            logger.error(f"Error extracting GitHub link from {stackoverflow_url}: {e}")
+            return None, None, None, None
 
     def _is_github_profile_url(self, url):
         """Check if URL is likely a GitHub profile URL"""
@@ -354,13 +360,14 @@ class GithubScraper:
                     'Stack Overflow Website',
                     'Stack Overflow Twitter',
                     'Stack Overflow GitHub',
-                    'Stack Overflow Blog'
+                    'Stack Overflow Blog',
+                    'Stack Overflow Profile Text'
                 ])
                 
                 for index, row in df.iterrows():
                     try:
                         # Get GitHub URL from Stack Overflow
-                        github_url = self.get_github_link(row['Stack Overflow Link'])
+                        github_url, description, twitter_url, profile_text = self.get_github_link(row['Stack Overflow Link'])
                         
                         # Get GitHub info
                         github_info = self.get_github_info(github_url)
@@ -372,7 +379,7 @@ class GithubScraper:
                             # Write row to CSV
                             csv_writer.writerow([
                                 self.sanitize_csv_field(row['Stack Overflow Link']),
-                                self.sanitize_csv_field(row['Stack Overflow Description']),
+                                self.sanitize_csv_field(description),
                                 self.sanitize_csv_field(github_url),
                                 self.sanitize_csv_field(github_info[0]),
                                 self.sanitize_csv_field(github_info[1].get('bio')),
@@ -392,9 +399,10 @@ class GithubScraper:
                                 self.sanitize_csv_field(so_info.get('description')),
                                 self.sanitize_csv_field(so_info.get('location')),
                                 self.sanitize_csv_field(so_info.get('website')),
-                                self.sanitize_csv_field(so_info.get('twitter')),
+                                self.sanitize_csv_field(twitter_url),
                                 self.sanitize_csv_field(so_info.get('github')),
-                                self.sanitize_csv_field(so_info.get('blog'))
+                                self.sanitize_csv_field(so_info.get('blog')),
+                                self.sanitize_csv_field(profile_text)
                             ])
                             csvfile.flush()
                             
@@ -404,6 +412,7 @@ class GithubScraper:
                             csv_writer.writerow([
                                 self.sanitize_csv_field(row['Stack Overflow Link']),
                                 self.sanitize_csv_field(row['Stack Overflow Description']),
+                                "Error",
                                 "Error",
                                 "Error",
                                 "Error",
@@ -436,6 +445,7 @@ class GithubScraper:
                         csv_writer.writerow([
                             self.sanitize_csv_field(row['Stack Overflow Link']),
                             self.sanitize_csv_field(row['Stack Overflow Description']),
+                            "Error",
                             "Error",
                             "Error",
                             "Error",
