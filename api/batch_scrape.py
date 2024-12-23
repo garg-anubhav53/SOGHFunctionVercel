@@ -116,7 +116,7 @@ class Handler(BaseHTTPRequestHandler):
                         so_url = f"https://{so_url}"
                     
                     # Get GitHub profile and Stack Overflow details
-                    github_url, so_description, twitter_url = scraper.get_github_link(so_url)
+                    github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
                     if not github_url:
                         results.append({
                             "stackoverflow_url": so_url,
