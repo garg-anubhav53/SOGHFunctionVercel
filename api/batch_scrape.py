@@ -44,34 +44,21 @@ def update_counter(value: int, processed_urls: list):
     """Update counter and log processed URLs in Supabase"""
     init_supabase()
     try:
-        # Update progress
+        # Update progress first
         supabase.table("scraping_progress").update({
             "current_index": value,
             "last_updated": "now()"
         }).eq("id", 1).execute()
         
-        # Process URLs one by one to handle duplicates gracefully
-        for url in processed_urls:
-            try:
-                # Try insert first
-                supabase.table("processed_urls").insert({
-                    "stackoverflow_url": url,
-                    "batch_index": value,
-                    "processed_at": "now()"
-                }).execute()
-            except Exception as e:
-                if "23505" in str(e):  # Unique violation error code
-                    # If duplicate, update instead
-                    try:
-                        supabase.table("processed_urls").update({
-                            "batch_index": value,
-                            "processed_at": "now()"
-                        }).eq("stackoverflow_url", url).execute()
-                    except Exception as update_error:
-                        print(f"Error updating URL {url}: {update_error}")
-                else:
-                    print(f"Error processing URL {url}: {e}")
-                continue
+        # Then insert all processed URLs in one go
+        if processed_urls:
+            data = [{
+                "stackoverflow_url": url,
+                "batch_index": value,
+                "processed_at": "now()"
+            } for url in processed_urls]
+            
+            supabase.table("processed_urls").upsert(data).execute()
             
     except Exception as e:
         print(f"Error updating counter: {e}")

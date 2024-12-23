@@ -87,8 +87,10 @@ def process_batch():
                 # Still mark as processed to avoid getting stuck
                 processed_urls.append(so_url)
         
-        # Update counter with processed URLs
-        update_counter(end_idx, processed_urls)
+        # Update counter if we processed any URLs
+        if processed_urls:
+            update_counter(end_idx, processed_urls)
+            print(f"Updated counter to {end_idx} and processed {len(processed_urls)} URLs")
         
         return {
             "message": f"Processed {len(processed_urls)} profiles",
