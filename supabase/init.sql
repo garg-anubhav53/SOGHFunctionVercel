@@ -69,6 +69,17 @@ BEGIN
         WHERE pu.stackoverflow_url = sp.url
     )
     ORDER BY sp.id ASC
-    LIMIT 100;  -- Only get next batch
+    LIMIT 40;  -- Match batch size from code
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to batch check processed URLs
+CREATE OR REPLACE FUNCTION batch_check_urls(urls TEXT[])
+RETURNS TABLE (stackoverflow_url TEXT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT pu.stackoverflow_url
+    FROM processed_urls pu
+    WHERE pu.stackoverflow_url = ANY(urls);
 END;
 $$ LANGUAGE plpgsql;

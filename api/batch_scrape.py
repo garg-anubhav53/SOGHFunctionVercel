@@ -65,17 +65,12 @@ def update_counter(value: int, processed_urls: list):
         raise
 
 def get_urls() -> list:
-    """Get unprocessed URLs using a simple query with pagination"""
+    """Get next batch of unprocessed URLs"""
     init_supabase()
     try:
-        # Get next batch of unprocessed URLs
         result = supabase.rpc('get_unprocessed_urls').execute()
         urls = [row.get('url') for row in result.data if row.get('url')]
-        
-        # If we got less than 1000 URLs, we've processed all available ones
-        if len(urls) < 1000:
-            print(f"Got {len(urls)} URLs, which is less than 1000. This might be the last batch.")
-            
+        print(f"Found {len(urls)} unprocessed URLs")
         return urls
     except Exception as e:
         print(f"Error getting unprocessed URLs: {e}")
@@ -95,14 +90,8 @@ def batch_check_processed_urls(urls: list) -> set:
     """Efficiently check multiple URLs in a single query"""
     init_supabase()
     try:
-        # Use a single query to check multiple URLs
-        query = """
-        SELECT stackoverflow_url 
-        FROM processed_urls 
-        WHERE stackoverflow_url = ANY($1::text[])
-        """
         result = supabase.rpc('batch_check_urls', {'urls': urls}).execute()
-        return {row.get('stackoverflow_url') for row in result.data}
+        return {row.get('stackoverflow_url') for row in result.data if row.get('stackoverflow_url')}
     except Exception as e:
         print(f"Error batch checking URLs: {e}")
         return set()

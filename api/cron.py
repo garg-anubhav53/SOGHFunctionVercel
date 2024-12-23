@@ -12,14 +12,13 @@ def process_batch():
         counter = get_counter()
         urls = get_urls()
         
-        if not urls:  # Only stop if there are no more unprocessed URLs
+        if not urls:
             return {
-                "message": "All profiles processed",
+                "message": "No more unprocessed profiles found",
                 "total_processed": counter
             }
         
         # Process batch
-        end_idx = min(counter + BATCH_SIZE, counter + len(urls))  # Only look at available URLs
         batch_urls = urls[:BATCH_SIZE]  # Take next batch
         processed_urls = []
         results = []
@@ -34,7 +33,7 @@ def process_batch():
                 if not so_url.startswith('http'):
                     so_url = f"https://{so_url}"
                 
-                # Check if URL has already been processed
+                # Skip if already processed
                 if so_url in processed_set:
                     results.append({
                         "stackoverflow_url": so_url,
@@ -46,14 +45,15 @@ def process_batch():
                 # Get GitHub profile and Stack Overflow details
                 github_url, so_description, twitter_url, profile_text = scraper.get_github_link(so_url)
                 
-                # Check if Twitter URL is Stack Overflow's profile
+                # Skip Stack Overflow's official Twitter
                 if twitter_url and twitter_url.lower().strip('/') == 'https://twitter.com/stackoverflow':
                     twitter_url = None
                 
-                # Save profile if we found a Twitter URL, even without GitHub
+                # Save profile with Twitter URL, even without GitHub
                 if twitter_url:
                     save_profile(so_url, None, None, None, so_description, twitter_url)
                 
+                # If no GitHub URL, mark as processed and continue
                 if not github_url:
                     results.append({
                         "stackoverflow_url": so_url,
@@ -64,33 +64,41 @@ def process_batch():
                     processed_urls.append(so_url)
                     continue
                 
-                # Get GitHub info and save profile
-                email, profile = scraper.get_github_info(github_url)
-                save_profile(so_url, github_url, email, profile, so_description, twitter_url)
-                
-                results.append({
-                    "stackoverflow_url": so_url,
-                    "github_url": github_url,
-                    "email": email,
-                    "status": "success",
-                    "stackoverflow_description": so_description,
-                    "twitter_url": twitter_url
-                })
-                processed_urls.append(so_url)
-                
+                # Get GitHub info and save complete profile
+                try:
+                    email, profile = scraper.get_github_info(github_url)
+                    save_profile(so_url, github_url, email, profile, so_description, twitter_url)
+                    
+                    results.append({
+                        "stackoverflow_url": so_url,
+                        "github_url": github_url,
+                        "email": email,
+                        "status": "success",
+                        "stackoverflow_description": so_description,
+                        "twitter_url": twitter_url
+                    })
+                    processed_urls.append(so_url)
+                except Exception as e:
+                    results.append({
+                        "stackoverflow_url": so_url,
+                        "status": "error",
+                        "error": f"Error saving profile: {str(e)}"
+                    })
+                    processed_urls.append(so_url)  # Still mark as processed to avoid getting stuck
+                    
             except Exception as e:
                 results.append({
                     "stackoverflow_url": so_url,
                     "status": "error",
                     "error": str(e)
                 })
-                # Still mark as processed to avoid getting stuck
-                processed_urls.append(so_url)
+                processed_urls.append(so_url)  # Mark as processed to avoid getting stuck
         
-        # Update counter if we processed any URLs
+        # Update counter with processed URLs
         if processed_urls:
-            update_counter(counter + len(processed_urls), processed_urls)
-            print(f"Updated counter to {counter + len(processed_urls)} and processed {len(processed_urls)} URLs")
+            new_counter = counter + len(processed_urls)
+            update_counter(new_counter, processed_urls)
+            print(f"Updated counter to {new_counter}, processed {len(processed_urls)} URLs")
         
         return {
             "message": f"Processed {len(processed_urls)} profiles",
@@ -99,8 +107,10 @@ def process_batch():
         }
         
     except Exception as e:
+        print(f"Error processing batch: {e}")
         return {
-            "error": str(e)
+            "error": str(e),
+            "current_index": counter
         }
 
 class Handler(BaseHTTPRequestHandler):
