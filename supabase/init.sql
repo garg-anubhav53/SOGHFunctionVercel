@@ -43,3 +43,29 @@ CREATE TABLE github_profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(stackoverflow_url)
 );
+
+-- Add hashed index for faster lookups
+CREATE INDEX idx_stackoverflow_url_hash ON processed_urls USING hash (stackoverflow_url);
+CREATE INDEX idx_stackoverflow_profiles_url_hash ON stackoverflow_profiles USING hash (url);
+
+-- Add a materialized view for unprocessed URLs
+CREATE MATERIALIZED VIEW unprocessed_urls AS
+SELECT sp.url
+FROM stackoverflow_profiles sp
+LEFT JOIN processed_urls pu ON sp.url = pu.stackoverflow_url
+WHERE pu.stackoverflow_url IS NULL;
+
+-- Function to refresh materialized view
+CREATE OR REPLACE FUNCTION refresh_unprocessed_urls()
+RETURNS TRIGGER AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY unprocessed_urls;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to refresh view when processed_urls changes
+CREATE TRIGGER refresh_unprocessed_urls_trigger
+AFTER INSERT OR DELETE ON processed_urls
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_unprocessed_urls();
