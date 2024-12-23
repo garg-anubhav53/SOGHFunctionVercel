@@ -31,7 +31,7 @@
     "crons": [
         {
             "path": "/cron/batch-scrape",
-            "schedule": "* * * * *"
+            "schedule": "*/5 * * * *"
         }
     ]
 }
