@@ -46,18 +46,17 @@ def update_counter(value: int, processed_urls: list):
             "last_updated": "now()"
         }).eq("id", 1).execute()
         
-        # Use upsert for processed URLs to handle duplicates
-        urls_data = [{
-            "stackoverflow_url": url,
-            "batch_index": value,
-            "processed_at": "now()"
-        } for url in processed_urls]
-        
-        if urls_data:
-            supabase.table("processed_urls").upsert(
-                urls_data,
-                on_conflict="stackoverflow_url"  # Specify the unique constraint
-            ).execute()
+        # Use upsert for processed URLs
+        for url in processed_urls:
+            try:
+                supabase.table("processed_urls").upsert({
+                    "stackoverflow_url": url,
+                    "batch_index": value,
+                    "processed_at": "now()"
+                }).execute()
+            except Exception as e:
+                print(f"Error upserting URL {url}: {e}")
+                continue
             
     except Exception as e:
         print(f"Error updating counter: {e}")

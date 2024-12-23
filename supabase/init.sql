@@ -65,4 +65,3 @@ $$ LANGUAGE plpgsql;
 
 -- Update processed_urls table to handle duplicates
 ALTER TABLE processed_urls DROP CONSTRAINT IF EXISTS processed_urls_stackoverflow_url_key;
-ALTER TABLE processed_urls ADD CONSTRAINT processed_urls_stackoverflow_url_key UNIQUE (stackoverflow_url) ON CONFLICT DO NOTHING;
