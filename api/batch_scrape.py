@@ -23,11 +23,15 @@ def get_counter() -> int:
     """Get current counter from Supabase"""
     init_supabase()
     try:
-        result = supabase.table("scraping_progress").select("current_index", "last_updated").single().execute()
+        # Try to get the record with id=1
+        result = supabase.table("scraping_progress").select("current_index").eq("id", 1).single().execute()
+        
         if result.data:
             return result.data.get("current_index", 0)
-        # Initialize if not exists
+            
+        # If no record exists, create it
         supabase.table("scraping_progress").insert({
+            "id": 1,
             "current_index": 0,
             "last_updated": "now()"
         }).execute()

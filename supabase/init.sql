@@ -7,10 +7,15 @@ CREATE TABLE stackoverflow_profiles (
 
 -- Table to track scraping progress
 CREATE TABLE scraping_progress (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     current_index INTEGER DEFAULT 0,
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Insert initial record with ID 1
+INSERT INTO scraping_progress (id, current_index, last_updated)
+VALUES (1, 0, NOW())
+ON CONFLICT (id) DO NOTHING;
 
 -- Table to store processed URLs for tracking
 CREATE TABLE processed_urls (
