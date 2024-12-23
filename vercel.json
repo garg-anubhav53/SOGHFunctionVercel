@@ -1,0 +1,21 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "api/*.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/scrape/stackoverflow",
+            "methods": ["POST"],
+            "dest": "api/stackoverflow.py"
+        },
+        {
+            "src": "/scrape/github",
+            "methods": ["POST"],
+            "dest": "api/github.py"
+        }
+    ]
+}

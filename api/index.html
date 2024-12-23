@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOGH Email Deploy API</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .endpoint {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SOGH Email Deploy API</h1>
+    <p>Welcome to the SOGH Email Deploy API. This API provides endpoints to scrape email information from GitHub and Stack Overflow profiles.</p>
+
+    <div class="endpoint">
+        <h2>Health Check</h2>
+        <p><strong>GET /health</strong></p>
+        <p>Check if the API is running.</p>
+        <pre><code>curl https://your-api-url/health</code></pre>
+    </div>
+
+    <div class="endpoint">
+        <h2>Scrape GitHub Profile</h2>
+        <p><strong>POST /scrape/github</strong></p>
+        <p>Scrape email information from a GitHub profile.</p>
+        <pre><code>curl -X POST https://your-api-url/scrape/github \
+    -H "Content-Type: application/json" \
+    -d '{"github_url": "github.com/username"}'</code></pre>
+    </div>
+
+    <div class="endpoint">
+        <h2>Scrape Stack Overflow Profile</h2>
+        <p><strong>POST /scrape/stackoverflow</strong></p>
+        <p>Scrape GitHub email information from a Stack Overflow profile.</p>
+        <pre><code>curl -X POST https://your-api-url/scrape/stackoverflow \
+    -H "Content-Type: application/json" \
+    -d '{"stackoverflow_url": "stackoverflow.com/users/user_id/username"}'</code></pre>
+    </div>
+</body>
+</html>
