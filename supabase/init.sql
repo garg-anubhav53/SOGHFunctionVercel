@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_stackoverflow_profiles_url ON stackoverflow_profi
 ALTER TABLE processed_urls DROP CONSTRAINT IF EXISTS processed_urls_stackoverflow_url_key;
 ALTER TABLE processed_urls ADD CONSTRAINT processed_urls_stackoverflow_url_key UNIQUE (stackoverflow_url);
 
--- Function to get unprocessed URLs
+-- Function to get unprocessed URLs with pagination
 CREATE OR REPLACE FUNCTION get_unprocessed_urls()
 RETURNS TABLE (url TEXT) AS $$
 BEGIN
@@ -67,6 +67,8 @@ BEGIN
         SELECT 1
         FROM processed_urls pu
         WHERE pu.stackoverflow_url = sp.url
-    );
+    )
+    ORDER BY sp.id ASC
+    LIMIT 1000;  -- Limit to 1000 URLs at a time
 END;
 $$ LANGUAGE plpgsql;
