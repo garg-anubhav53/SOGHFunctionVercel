@@ -29,7 +29,7 @@ CREATE TABLE processed_urls (
 CREATE TABLE github_profiles (
     id SERIAL PRIMARY KEY,
     stackoverflow_url TEXT NOT NULL,
-    github_url TEXT NOT NULL,
+    github_url TEXT,  
     stackoverflow_description TEXT,
     stackoverflow_profile_text TEXT,
     twitter_url TEXT,
@@ -47,6 +47,10 @@ CREATE TABLE github_profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(stackoverflow_url)
 );
+
+-- Modify github_url to be nullable in existing table
+ALTER TABLE github_profiles 
+ALTER COLUMN github_url DROP NOT NULL;
 
 -- Create indexes for faster lookups
 CREATE INDEX IF NOT EXISTS idx_processed_urls_url ON processed_urls (stackoverflow_url);
