@@ -46,16 +46,27 @@ def update_counter(value: int, processed_urls: list):
             "last_updated": "now()"
         }).eq("id", 1).execute()
         
-        # Use upsert for processed URLs
+        # Process URLs one by one to handle duplicates gracefully
         for url in processed_urls:
             try:
-                supabase.table("processed_urls").upsert({
+                # Try insert first
+                supabase.table("processed_urls").insert({
                     "stackoverflow_url": url,
                     "batch_index": value,
                     "processed_at": "now()"
                 }).execute()
             except Exception as e:
-                print(f"Error upserting URL {url}: {e}")
+                if "23505" in str(e):  # Unique violation error code
+                    # If duplicate, update instead
+                    try:
+                        supabase.table("processed_urls").update({
+                            "batch_index": value,
+                            "processed_at": "now()"
+                        }).eq("stackoverflow_url", url).execute()
+                    except Exception as update_error:
+                        print(f"Error updating URL {url}: {update_error}")
+                else:
+                    print(f"Error processing URL {url}: {e}")
                 continue
             
     except Exception as e:

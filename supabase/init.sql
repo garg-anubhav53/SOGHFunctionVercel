@@ -17,8 +17,7 @@ CREATE TABLE processed_urls (
     id SERIAL PRIMARY KEY,
     stackoverflow_url TEXT NOT NULL,
     batch_index INTEGER NOT NULL,
-    processed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    UNIQUE(stackoverflow_url)
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
 -- Table to store GitHub profile data
@@ -48,6 +47,10 @@ CREATE TABLE github_profiles (
 CREATE INDEX IF NOT EXISTS idx_processed_urls_url ON processed_urls (stackoverflow_url);
 CREATE INDEX IF NOT EXISTS idx_stackoverflow_profiles_url ON stackoverflow_profiles (url);
 
+-- Add unique constraint for upsert operations
+ALTER TABLE processed_urls DROP CONSTRAINT IF EXISTS processed_urls_stackoverflow_url_key;
+ALTER TABLE processed_urls ADD CONSTRAINT processed_urls_stackoverflow_url_key UNIQUE (stackoverflow_url);
+
 -- Function to get unprocessed URLs
 CREATE OR REPLACE FUNCTION get_unprocessed_urls()
 RETURNS TABLE (url TEXT) AS $$
@@ -62,6 +65,3 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql;
-
--- Update processed_urls table to handle duplicates
-ALTER TABLE processed_urls DROP CONSTRAINT IF EXISTS processed_urls_stackoverflow_url_key;
