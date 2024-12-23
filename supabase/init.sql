@@ -44,28 +44,25 @@ CREATE TABLE github_profiles (
     UNIQUE(stackoverflow_url)
 );
 
--- Add hashed index for faster lookups
-CREATE INDEX idx_stackoverflow_url_hash ON processed_urls USING hash (stackoverflow_url);
-CREATE INDEX idx_stackoverflow_profiles_url_hash ON stackoverflow_profiles USING hash (url);
+-- Create indexes for faster lookups
+CREATE INDEX IF NOT EXISTS idx_processed_urls_url ON processed_urls (stackoverflow_url);
+CREATE INDEX IF NOT EXISTS idx_stackoverflow_profiles_url ON stackoverflow_profiles (url);
 
--- Add a materialized view for unprocessed URLs
-CREATE MATERIALIZED VIEW unprocessed_urls AS
-SELECT sp.url
-FROM stackoverflow_profiles sp
-LEFT JOIN processed_urls pu ON sp.url = pu.stackoverflow_url
-WHERE pu.stackoverflow_url IS NULL;
-
--- Function to refresh materialized view
-CREATE OR REPLACE FUNCTION refresh_unprocessed_urls()
-RETURNS TRIGGER AS $$
+-- Function to get unprocessed URLs
+CREATE OR REPLACE FUNCTION get_unprocessed_urls()
+RETURNS TABLE (url TEXT) AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY unprocessed_urls;
-    RETURN NULL;
+    RETURN QUERY
+    SELECT sp.url
+    FROM stackoverflow_profiles sp
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM processed_urls pu
+        WHERE pu.stackoverflow_url = sp.url
+    );
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to refresh view when processed_urls changes
-CREATE TRIGGER refresh_unprocessed_urls_trigger
-AFTER INSERT OR DELETE ON processed_urls
-FOR EACH STATEMENT
-EXECUTE FUNCTION refresh_unprocessed_urls();
+-- Update processed_urls table to handle duplicates
+ALTER TABLE processed_urls DROP CONSTRAINT IF EXISTS processed_urls_stackoverflow_url_key;
+ALTER TABLE processed_urls ADD CONSTRAINT processed_urls_stackoverflow_url_key UNIQUE (stackoverflow_url) ON CONFLICT DO NOTHING;

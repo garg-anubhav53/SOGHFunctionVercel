@@ -64,29 +64,22 @@ def update_counter(value: int, processed_urls: list):
         raise
 
 def get_urls() -> list:
-    """Get unprocessed URLs using materialized view"""
+    """Get unprocessed URLs using a simple query"""
     init_supabase()
     try:
-        # Use the materialized view for faster retrieval
-        result = supabase.from_('unprocessed_urls').select('url').execute()
+        # Use a simple SELECT with NOT EXISTS
+        result = supabase.rpc('get_unprocessed_urls').execute()
         return [row.get('url') for row in result.data]
     except Exception as e:
         print(f"Error getting unprocessed URLs: {e}")
         return []
 
 def is_url_processed(so_url: str) -> bool:
-    """Check if URL has been processed using hashed index"""
+    """Check if URL has been processed"""
     init_supabase()
     try:
-        # Use EXISTS for faster checking
-        query = """
-        SELECT EXISTS (
-            SELECT 1 FROM processed_urls 
-            WHERE stackoverflow_url = $1
-        ) as exists
-        """
-        result = supabase.rpc('check_processed_url', {'url': so_url}).execute()
-        return result.data[0].get('exists', False)
+        result = supabase.table("processed_urls").select("id").eq("stackoverflow_url", so_url).execute()
+        return bool(result.data)
     except Exception as e:
         print(f"Error checking processed URL: {e}")
         return False
